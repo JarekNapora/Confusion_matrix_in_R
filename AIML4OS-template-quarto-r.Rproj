@@ -1,3 +1,8 @@
+---
+title: "Confusion_matrix_in_ R"
+author: "Jarosław Napora"
+format: html
+editor: visual
 Version: 1.0
 
 RestoreWorkspace: Default
@@ -11,3 +16,144 @@ Encoding: UTF-8
 
 RnwWeave: Sweave
 LaTeX: pdfLaTeX
+---
+
+## Introduction
+
+- Goal of the training: Understand what a Confusion Matrix is and how to use it in R.
+
+- Short description of the Iris dataset: A classic dataset containing 150 flower observations with 4 numerical features (sepal length, sepal width, petal length, petal width) and one categorical variable (Species) with 3 classes (setosa, versicolor, virginica).
+
+- Why Iris is a good example for learning classification:
+
+  - Well-balanced dataset with equal class sizes.
+
+  - Simple but not trivial (easy to visualize and understand).
+
+  - Frequently used as a benchmark in machine learning tutorials.
+  
+
+## What is a Confusion Matrix?
+
+- Definition: A table that summarizes the performance of a classification model by comparing predicted labels with the true labels.
+
+- Intuition: It shows how many predictions fall into the categories of True Positives, False Positives, True Negatives, and False Negatives.
+
+- For multi-class problems (like Iris), the Confusion Matrix extends into a square table where rows represent the actual classes and columns represent the predicted classes.
+
+## Preparing the Data in R
+
+```{r}
+# Load iris dataset and select only two classes for binary classification
+data(iris)
+iris_bin <- subset(iris, Species %in% c("versicolor", "virginica"))
+
+# Recode factor into binary numeric variable (versicolor = 0, virginica = 1)
+iris_bin$Species <- factor(iris_bin$Species)
+iris_bin$Species_bin <- ifelse(iris_bin$Species == "virginica", 1, 0)
+
+# Check the mapping
+table(iris_bin$Species, iris_bin$Species_bin)
+
+# Train-test split: 70% training, 30% testing
+set.seed(123)
+idx <- sample(1:nrow(iris_bin), size = 0.7 * nrow(iris_bin))
+train <- iris_bin[idx, ]
+test  <- iris_bin[-idx, ]
+```
+
+## Building a Simple Classification Model in R.
+
+```{r}
+# Train a logistic regression model
+model <- glm(Species_bin ~ Sepal.Length + Sepal.Width + Petal.Length + Petal.Width,
+             data = train,
+             family = binomial)
+
+# Summary of the model
+summary(model)
+```
+
+##Creating a Confusion Matrix in R
+
+```{r}
+# Predict probabilities for the test set
+prob <- predict(model, newdata = test, type = "response")
+
+# Convert probabilities into class predictions (threshold = 0.5)
+pred <- ifelse(prob > 0.5, 1, 0)
+
+# Create confusion matrix
+conf_mat <- table(Predicted = pred, Actual = test$Species_bin)
+conf_mat
+```
+
+## Evaluation Metrics from the Confusion Matrix
+
+- Accuracy.
+
+- Precision, Recall, and F1-score (per class).
+
+- Sensitivity and Specificity.
+
+- Extracting and interpreting results from *caret::confusionMatrix()*.
+
+```{r}
+# Extract confusion matrix values
+TN <- conf_mat[1,1]
+FP <- conf_mat[2,1]
+FN <- conf_mat[1,2]
+TP <- conf_mat[2,2]
+
+# Calculate performance metrics
+accuracy    <- (TP + TN) / sum(conf_mat)
+precision   <- TP / (TP + FP)
+recall      <- TP / (TP + FN)        # Sensitivity
+specificity <- TN / (TN + FP)
+f1_score    <- 2 * precision * recall / (precision + recall)
+
+# Print results
+cat("Accuracy:   ", round(accuracy, 3), "\n")
+cat("Precision:  ", round(precision, 3), "\n")
+cat("Recall:     ", round(recall, 3), "\n")
+cat("Specificity:", round(specificity, 3), "\n")
+cat("F1 Score:   ", round(f1_score, 3), "\n")
+```
+
+## Visualizing the Confusion Matrix
+
+- Create heatmaps with *ggplot2* or *pheatm*ap.
+
+- Show how visualization makes interpretation easier.
+
+```{r}
+# Visualization using ggplot2
+library(ggplot2)
+
+# Convert to data frame for plotting
+conf_df <- as.data.frame(conf_mat)
+
+ggplot(conf_df, aes(x = Actual, y = Predicted, fill = Freq)) +
+  geom_tile(color = "black") +
+  geom_text(aes(label = Freq), size = 6) +
+  scale_fill_gradient(low = "white", high = "steelblue") +
+  labs(title = "Confusion Matrix Heatmap") +
+  theme_minimal()
+```
+
+## Hands-on Practice
+
+- Build a Confusion Matrix using a different model (e.g., Logistic Regression).
+
+- Compare results between models.
+
+- Discuss what “good performance” means in different contexts.
+
+## Summary
+
+- Recap: definition, use cases, and interpretation of the Confusion Matrix.
+
+- Common mistakes in interpretation (e.g., relying only on accuracy).
+
+- Practical applications in real-world data science and business problems.
+
